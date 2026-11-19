@@ -1,2 +1,441 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><title>Donald L. Holland</title></head><body><h1>Uploading timeline</h1></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Donald L. Holland — WWII Service Timeline</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root { --bg:#070b12; --surface:#101722; --s2:#161e2c; --s3:#1c2636; --line:#2a384c; --fg:#e7eef8; --muted:#8b9bb0; --faint:#5d6b80; --green:#3dce7a; --orange:#f0a04b; --blue:#5aa7ff; --gap:#4b5568; --red:#ef4d4d; --ink:#07110c; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); font: 15px/1.45 Barlow, "Segoe UI", sans-serif; }
+  button { cursor:pointer; font: inherit; }
+  header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--surface); border-bottom:1px solid var(--line); }
+  h1 { margin:0; font-size:16px; }
+  .sub { color:var(--muted); font: 12px/1.4 ui-monospace, monospace; }
+  .filters { display:flex; gap:8px; flex-wrap:wrap; }
+  .filters button, .print { background:var(--s2); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:8px 12px; }
+  .filters button.on { background:var(--green); color:var(--ink); border-color:var(--green); font-weight:600; }
+  .grid { display:grid; grid-template-columns: 220px minmax(0,1fr) minmax(360px,42%); height: calc(100% - 64px); }
+  aside, main { min-width:0; overflow:auto; }
+  .left { padding:16px; border-right:1px solid var(--line); }
+  .right { border-left:1px solid var(--line); }
+  h2 { margin:0 0 8px; color:var(--faint); font: 11px/1 ui-monospace, monospace; letter-spacing:.08em; }
+  section { margin-bottom:18px; }
+  .row { display:flex; justify-content:space-between; gap:8px; font-size:14px; margin:2px 0; }
+  .row span { color:var(--muted); }
+  .warn { color:var(--orange); font-size:14px; }
+  .sw { display:inline-block; width:20px; height:12px; border-radius:3px; margin-right:8px; vertical-align:-1px; }
+  .adopted { background:var(--green); }
+  .inferred { background: repeating-linear-gradient(-45deg, var(--orange) 0 3px, #c47a28 3px 6px); }
+  .read { background: rgba(90,167,255,.16); box-shadow: inset 0 0 0 1.5px var(--blue); }
+  .gap { background:var(--gap); }
+  .timeline-wrap { padding:12px 16px; }
+  .years { display:flex; justify-content:space-between; color:var(--faint); font:12px ui-monospace, monospace; margin-bottom:6px; }
+  .track { position:relative; min-width:720px; }
+  .bar { position:absolute; height:28px; border-radius:6px; border:0; text-align:left; padding:0 8px; font-size:12px; font-weight:600; overflow:hidden; white-space:nowrap; }
+  .bar.adopted { background:var(--green); color:var(--ink); }
+  .bar.inferred { background: repeating-linear-gradient(-45deg, var(--orange) 0 4px, #c47a28 4px 8px); color:var(--ink); }
+  .bar.read { background: rgba(90,167,255,.16); color:var(--blue); box-shadow: inset 0 0 0 1.5px var(--blue); }
+  .bar.gap { background:var(--gap); color:var(--fg); }
+  .bar.on { outline:2px solid var(--fg); }
+  .detail { border-top:1px solid var(--line); background:var(--surface); padding:12px 16px; }
+  .pill { border:1px solid var(--line); border-radius:99px; padding:1px 8px; color:var(--muted); font:11px ui-monospace, monospace; }
+  .conflict { border:1px solid rgba(239,77,77,.45); background:var(--s2); border-radius:6px; padding:8px 10px; margin-top:8px; }
+  #map { height:460px; background:#d5dde6; }
+  .mapbox { padding:16px; }
+  .note { color:var(--muted); font-size:12px; margin:8px 0 0; }
+  .unit { font-size:12px; margin:8px 0; }
+  .unit .lab { display:flex; justify-content:space-between; margin-bottom:3px; }
+  .rail { position:relative; height:8px; background:var(--s3); border-radius:99px; }
+  .fill { position:absolute; height:8px; border-radius:99px; }
+  .fill.adopted { background:var(--green); } .fill.inferred { background:var(--orange); } .fill.read { background:var(--blue); } .fill.gap { background:var(--gap); }
+  @media (max-width: 980px) {
+    .grid { grid-template-columns: 1fr; height:auto; }
+    .left, .right { border:0; }
+    .right { order:-1; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>WWII Service Timeline</h1>
+    <div class="sub">Donald L. Holland · ASN 35870374 · Aug 1943 – Jan 1946</div>
+  </div>
+  <div class="filters">
+    <button class="on" data-f="all">All</button>
+    <button data-f="adopted">Adopted</button>
+    <button data-f="conflicts">Conflicts</button>
+    <button data-f="gaps">Gaps</button>
+    <button class="print" onclick="window.print()">Print</button>
+  </div>
+</header>
+<div class="grid">
+  <aside class="left">
+    <section>
+      <h2>PERSONNEL</h2>
+      <div class="row"><span>Name</span>Donald L. Holland</div>
+      <div class="row"><span>ASN</span>35870374</div>
+      <div class="row"><span>Branch</span>U.S. Army, TC</div>
+      <div class="row"><span>Induction</span>Aug 1943</div>
+      <div class="row"><span>Discharge</span>27 Jan 1946</div>
+      <div class="row"><span>Place</span>Camp Atterbury, IN</div>
+    </section>
+    <section>
+      <h2>LAST KNOWN UNIT</h2>
+      <div>285th Port Company</div>
+      <div style="color:var(--muted)">517th Port Battalion</div>
+      <p class="warn">After 1 Dec 1945: 338th vs 352nd, unresolved</p>
+    </section>
+    <section>
+      <h2>REVIEW STATUS</h2>
+      <div id="counts"></div>
+    </section>
+    <section>
+      <h2>LEGEND</h2>
+      <div><i class="sw adopted"></i>Adopted</div>
+      <div><i class="sw inferred"></i>Inferred</div>
+      <div><i class="sw read"></i>Read, not adopted</div>
+      <div><i class="sw gap"></i>No record naming him</div>
+    </section>
+  </aside>
+  <main>
+    <div class="timeline-wrap">
+      <h2>SERVICE TIMELINE · 1943–1946</h2>
+      <div class="years"><span>1943</span><span>1944</span><span>1945</span><span>1946</span></div>
+      <div class="track" id="track"></div>
+    </div>
+    <div class="detail" id="detail"></div>
+  </main>
+  <aside class="right">
+    <div class="mapbox">
+      <h2>MAP · U.S. TO EUROPE</h2>
+      <div id="map"></div>
+      <p class="note">Solid green is a sourced move. Dashed amber is a leg with no ship, no port, or no record that names him. Needs an internet connection for the map picture. No API key.</p>
+    </div>
+    <div class="mapbox" style="border-top:1px solid var(--line)">
+      <h2>UNIT CONTEXT</h2>
+      <div id="units"></div>
+    </div>
+  </aside>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const ENTRIES = [
+  {
+    id: "TL-001",
+    label: "Induction — Ft. Benjamin Harrison",
+    place: "Fort Benjamin Harrison, IN",
+    unit: "Reception Center, Co C",
+    start: "1943-08-19",
+    end: "1943-09-15",
+    status: "adopted",
+    source: "Induction and morning-report chronology",
+    notes: "Inducted at Fort Benjamin Harrison, then moved through the reception center into Transportation Corps training.",
+  },
+  {
+    id: "TL-004",
+    label: "Training — New Orleans",
+    place: "New Orleans / Camp Plauche, LA",
+    unit: "Co H, then Co D, 2d TC Training Bn",
+    start: "1943-09-16",
+    end: "1944-01-07",
+    status: "inferred",
+    source: "Unit rosters; company-change date unsourced",
+    notes: "He is placed with the New Orleans training battalion. The day he changed companies has no source.",
+  },
+  {
+    id: "TL-012",
+    label: "Camp Reynolds",
+    place: "Camp Reynolds, PA",
+    unit: "Processing / casual",
+    start: "1944-01-11",
+    end: "1944-02-03",
+    status: "adopted",
+    source: "SO 9, 11 Jan 1944",
+    notes: "Left Camp Plauche and reported to Camp Reynolds.",
+  },
+  {
+    id: "TL-015",
+    label: "Camp Myles Standish, then at sea",
+    place: "Camp Myles Standish, MA → unknown ship",
+    unit: "Casual Co B-2",
+    start: "1944-02-03",
+    end: "1944-02-23",
+    status: "adopted",
+    source: "Movement orders; vessel not named",
+    notes: "At Camp Myles Standish from 3 Feb. At sea 13–23 Feb. Embarkation port, ship, and landing port are unknown.",
+    conflict: "11–23 Feb 1944: ship and ports are not identified. Departure dates later in the file also disagree.",
+  },
+  {
+    id: "TL-018",
+    label: "10th Replacement Depot",
+    place: "United Kingdom staging",
+    unit: "319th Repl Co / 10th Repl Depot",
+    start: "1944-02-24",
+    end: "1944-03-02",
+    status: "read",
+    source: "SO60 para 21 (recommended citation, not upgraded)",
+    notes: "The 10th Replacement Depot link rests on SO60. The held copy's roll and frame are not fully confirmed.",
+    conflict: "SourceLock and the master say he came from the 10th. The 3 Mar morning-report frame shows no origin unit.",
+  },
+  {
+    id: "TL-021",
+    label: "Attached to 285th Port Company",
+    place: "Shirehampton / Camp Sea Mills, UK",
+    unit: "285th Port Co, attached-unassigned",
+    start: "1944-03-03",
+    end: "1944-04-23",
+    status: "adopted",
+    source: "Morning report frames 01529–01565",
+    notes: "Attached-unassigned from 3 Mar 1944 at Shirehampton. Formally assigned later, effective 22 Aug.",
+    conflict: "3 Mar origin unit is still open: the frame itself does not name the 10th Replacement Depot.",
+  },
+  {
+    id: "TL-024",
+    label: "56th General Hospital",
+    place: "United Kingdom",
+    unit: "56th General Hospital",
+    start: "1944-04-24",
+    end: "1944-05-04",
+    status: "adopted",
+    source: "Hospital dates in the adopted chronology",
+    notes: "Hospital stay 24 Apr–4 May 1944, then back with the 285th.",
+  },
+  {
+    id: "GAP-1",
+    label: "No record naming him",
+    place: "Crossing to Normandy — unnamed",
+    unit: "285th context only; he is not named",
+    start: "1944-05-05",
+    end: "1944-08-21",
+    status: "gap",
+    source: "None held that names Donald",
+    notes: "No record names him through the Normandy crossing. No vessel is known. Unit context is not personal evidence.",
+  },
+  {
+    id: "TL-030",
+    label: "Formally assigned — Normandy",
+    place: "St. Laurent-sur-Mer / Vierville, France",
+    unit: "285th Port Co / 517th Port Bn",
+    start: "1944-08-22",
+    end: "1944-09-21",
+    status: "adopted",
+    source: "Assignment effective 22 Aug; named 21 Sep at St. Laurent",
+    notes: "Formally assigned effective 22 Aug 1944. The 285th had joined the 517th on 10 Jul. Named at St. Laurent-sur-Mer on 21 Sep.",
+  },
+  {
+    id: "GAP-2",
+    label: "No record naming him",
+    place: "Move toward Antwerp — unnamed",
+    unit: "Unit context only",
+    start: "1944-09-22",
+    end: "1945-03-19",
+    status: "gap",
+    source: "None held that names Donald",
+    notes: "No record names him across the move to Antwerp, including the 29 Nov unit movement.",
+  },
+  {
+    id: "TL-041",
+    label: "29th Field Hospital",
+    place: "Antwerp area",
+    unit: "29th U.S. Field Hospital",
+    start: "1945-03-20",
+    end: "1945-03-21",
+    status: "adopted",
+    source: "Extracts pp. 8595 and 8599, item 10559",
+    notes: "Hospital stay 20–21 Mar 1945. Those pages are the 285th packet (item 10559), not the mixed 284th pages.",
+  },
+  {
+    id: "TL-056",
+    label: "Good Conduct Medal",
+    place: "HQ 517th Port Battalion",
+    unit: "285th Port Co",
+    start: "1945-03-31",
+    end: "1945-03-31",
+    status: "adopted",
+    source: "GO 3, p. 26364",
+    notes: "General Order 3 awards the Good Conduct Medal to Pvt Donald L. Holland, 35870374.",
+  },
+  {
+    id: "TL-057",
+    label: "PFC and MOS change",
+    place: "285th Port Company",
+    unit: "285th Port Co",
+    start: "1945-04-01",
+    end: "1945-04-01",
+    status: "read",
+    source: "MR p. 26365 — recommendation, not adopted",
+    notes: "Morning report shows MOS 521 to 271 and promotion to PFC per Company Order 2. The order itself is not held.",
+  },
+  {
+    id: "GAP-3",
+    label: "No record naming him",
+    place: "Antwerp — unnamed stretch",
+    unit: "517th vs 487th still in conflict",
+    start: "1945-04-02",
+    end: "1945-10-17",
+    status: "gap",
+    source: "None held that names Donald",
+    notes: "No record names him from late March until the October promotion. July 1945 battalion identity (517th vs 487th) is still open.",
+    conflict: "July 1945 battalion: one packet is the 284th, another reads 285th Port Co / 517th. A 487th reading remains unresolved.",
+  },
+  {
+    id: "TL-048",
+    label: "Promoted to Tec 5",
+    place: "Antwerp area",
+    unit: "285th / 517th",
+    start: "1945-10-18",
+    end: "1945-11-22",
+    status: "adopted",
+    source: "Promotion 18 Oct; roster 22 Nov",
+    notes: "Promoted from PFC to Tec 5 on 18 Oct. On the 22 Nov roster.",
+  },
+  {
+    id: "TL-050",
+    label: "SO149 transfer order",
+    place: "Antwerp area",
+    unit: "Toward 338th TC Harbor Craft Co",
+    start: "1945-11-26",
+    end: "1945-12-01",
+    status: "adopted",
+    source: "SO149, 26 Nov 1945",
+    notes: "Special Order 149 moves him. Effective unit after 1 Dec is not settled.",
+    conflict: "SO149 moves him to the 338th. The separation record still names the 285th / 517th. The 338th December morning report is not on file.",
+  },
+  {
+    id: "TL-052",
+    label: "Unit unresolved",
+    place: "Europe, then the voyage home",
+    unit: "338th or 352nd — unknown",
+    start: "1945-12-01",
+    end: "1946-01-08",
+    status: "gap",
+    source: "No January 1946 morning report for the 285th, 338th, or 352nd",
+    notes: "SO155 / the 352nd roster is too faint to include or exclude him.",
+    conflict: "Still open: which company he belonged to after 1 Dec 1945.",
+  },
+  {
+    id: "TL-055",
+    label: "Return and discharge",
+    place: "Camp Atterbury, IN",
+    unit: "Separation",
+    start: "1946-01-09",
+    end: "1946-01-27",
+    status: "adopted",
+    source: "Separation record; Sentinel-Echo notice 21 Feb",
+    notes: "Left Europe about 9 Jan, reached the United States 22 Jan, discharged at Camp Atterbury 27 Jan 1946.",
+    conflict: "Departure is recorded as 9 Jan, 10 Jan, and 11 Jan in different places.",
+  },
+];
+const STOPS = [
+  { id: "fbh", name: "Ft. Benjamin Harrison", lat: 39.86, lon: -86.02, kind: "adopted" },
+  { id: "nola", name: "New Orleans", lat: 29.98, lon: -90.08, kind: "inferred" },
+  { id: "rey", name: "Camp Reynolds", lat: 41.4, lon: -80.35, kind: "adopted" },
+  { id: "cms", name: "Camp Myles Standish", lat: 41.94, lon: -71.05, kind: "adopted" },
+  { id: "shire", name: "Shirehampton", lat: 51.49, lon: -2.67, kind: "adopted" },
+  { id: "norm", name: "Normandy", lat: 49.37, lon: -0.88, kind: "gap" },
+  { id: "ant", name: "Antwerp", lat: 51.22, lon: 4.4, kind: "adopted" },
+  { id: "att", name: "Camp Atterbury", lat: 39.34, lon: -86.03, kind: "adopted" },
+];
+const LEGS = [
+  { from: "fbh", to: "nola", certain: true },
+  { from: "nola", to: "rey", certain: true },
+  { from: "rey", to: "cms", certain: true },
+  { from: "cms", to: "shire", certain: false },
+  { from: "shire", to: "norm", certain: false },
+  { from: "norm", to: "ant", certain: false },
+  { from: "ant", to: "att", certain: true },
+];
+const UNITS = [
+  { name: "Reception / TC training", start: "1943-08-19", end: "1944-01-07", status: "adopted" },
+  { name: "Camp Reynolds / Standish", start: "1944-01-11", end: "1944-02-23", status: "adopted" },
+  { name: "10th Replacement Depot", start: "1944-02-24", end: "1944-03-02", status: "read" },
+  { name: "285th attached", start: "1944-03-03", end: "1944-08-21", status: "adopted" },
+  { name: "285th / 517th assigned", start: "1944-08-22", end: "1945-11-26", status: "adopted" },
+  { name: "Hospital stays", start: "1944-04-24", end: "1944-05-04", status: "inferred" },
+  { name: "338th or 352nd", start: "1945-12-01", end: "1946-01-08", status: "gap" },
+];
+const START = Date.UTC(1943,7,1), END = Date.UTC(1946,2,15);
+const pct = iso => (Date.parse(iso) - START) / (END - START) * 100;
+const fmt = iso => new Date(iso+"T00:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});
+const LABELS = {adopted:"Adopted", inferred:"Inferred", read:"Read, not adopted", gap:"No record naming him"};
+let filter = "all", selected = ENTRIES[0];
+const counts = {
+  adopted: ENTRIES.filter(e=>e.status==="adopted").length,
+  inferred: ENTRIES.filter(e=>e.status==="inferred").length,
+  read: ENTRIES.filter(e=>e.status==="read").length,
+  gap: ENTRIES.filter(e=>e.status==="gap").length,
+  conflict: ENTRIES.filter(e=>e.conflict).length
+};
+document.getElementById("counts").innerHTML = [
+  ["adopted","Adopted",counts.adopted],
+  ["inferred","Inferred",counts.inferred],
+  ["read","Read, not adopted",counts.read],
+  ["gap","No record naming him",counts.gap]
+].map(([c,l,n])=>'<div class="row"><span><i class="sw '+c+'"></i>'+l+'</span>'+n+'</div>').join("")
+  + '<div class="row"><span style="color:var(--red)">Conflicts</span>'+counts.conflict+'</div>';
+document.getElementById("units").innerHTML = UNITS.map(u=>{
+  const left = pct(u.start), width = Math.max(pct(u.end)-left, 2);
+  return '<div class="unit"><div class="lab"><span>'+u.name+'</span><span style="color:var(--faint)">'+LABELS[u.status]+'</span></div><div class="rail"><div class="fill '+u.status+'" style="left:'+left+'%;width:'+width+'%"></div></div></div>';
+}).join("");
+function lanes(items){
+  const ends=[];
+  return items.map(entry=>{
+    const s=Date.parse(entry.start), e=Date.parse(entry.end);
+    let lane=ends.findIndex(x=>x<s);
+    if(lane<0){ lane=ends.length; ends.push(e); } else ends[lane]=e;
+    return {entry,lane};
+  });
+}
+function render(){
+  const visible = ENTRIES.filter(e=> filter==="all" || (filter==="adopted"&&e.status==="adopted") || (filter==="conflicts"&&e.conflict) || (filter==="gaps"&&e.status==="gap"));
+  const placed = lanes(visible);
+  const n = Math.max(1, ...placed.map(p=>p.lane+1));
+  const track = document.getElementById("track");
+  track.style.height = (n*40+8)+"px";
+  track.innerHTML = placed.map(({entry,lane})=>{
+    const left=pct(entry.start), width=Math.max(pct(entry.end)-left, 1.6);
+    return '<button class="bar '+entry.status+(entry.id===selected.id?" on":"")+'" data-id="'+entry.id+'" style="left:'+left+'%;width:'+width+'%;top:'+(lane*40)+'px">'+entry.label+(entry.conflict?" !":"")+'</button>';
+  }).join("");
+  track.querySelectorAll(".bar").forEach(b=>b.onclick=()=>{ selected=ENTRIES.find(e=>e.id===b.dataset.id); render(); show(); });
+}
+function show(){
+  const e=selected;
+  document.getElementById("detail").innerHTML =
+    '<div><strong>'+e.label+'</strong> <span class="pill">'+LABELS[e.status]+'</span></div>'+
+    '<div style="color:var(--muted)">'+fmt(e.start)+' – '+fmt(e.end)+' · '+e.place+'</div>'+
+    '<div>'+e.unit+'</div><p>'+e.notes+'</p>'+
+    '<div class="sub">Source: '+e.source+'</div>'+
+    (e.conflict?'<div class="conflict">'+e.conflict+'</div>':'');
+  const key = [["Harrison","Harrison"],["New Orleans","New Orleans"],["Plauche","New Orleans"],["Reynolds","Reynolds"],["Standish","Standish"],["Shirehampton","Shirehampton"],["Sea Mills","Shirehampton"],["Normandy","Normandy"],["Laurent","Normandy"],["Vierville","Normandy"],["Antwerp","Antwerp"],["Atterbury","Atterbury"]].find(([k])=>e.place.includes(k));
+  if (window._markers && key) {
+    const hit = window._markers.find(m=>m.name.includes(key[1]));
+    if (hit) hit.open();
+  }
+}
+document.querySelectorAll(".filters button[data-f]").forEach(btn=>{
+  btn.onclick=()=>{ filter=btn.dataset.f; document.querySelectorAll(".filters button").forEach(b=>b.classList.remove("on")); btn.classList.add("on"); render(); };
+});
+const map = L.map("map", {scrollWheelZoom:true}).setView([45,-40], 3);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}", {
+  attribution: "Tiles &copy; Esri, National Geographic", maxZoom: 16
+}).addTo(map);
+const byId = Object.fromEntries(STOPS.map(s=>[s.id,s]));
+const FILL = {adopted:"#1f8a4c", inferred:"#d4880f", gap:"#2f6fd6"};
+LEGS.forEach(leg=>{
+  const a=byId[leg.from], b=byId[leg.to];
+  L.polyline([[a.lat,a.lon],[b.lat,b.lon]], {color:leg.certain?"#1f8a4c":"#d4880f", weight:3, dashArray:leg.certain?null:"7 6"}).addTo(map);
+});
+window._markers = STOPS.map((stop,i)=>{
+  const marker = L.circleMarker([stop.lat, stop.lon], {radius:8, color:"#0b1220", weight:2, fillColor:FILL[stop.kind], fillOpacity:1}).addTo(map);
+  marker.bindPopup("<strong>"+(i+1)+". "+stop.name+"</strong>");
+  return {name:stop.name, open:()=>marker.openPopup()};
+});
+map.fitBounds(L.latLngBounds(STOPS.map(s=>[s.lat,s.lon])), {padding:[36,36]});
+render(); show();
+setTimeout(()=>map.invalidateSize(), 200);
+</script>
+</body>
+</html>
